@@ -465,25 +465,8 @@ class DotsVisionTransformer(PreTrainedModel):
     def get_pos_ids_by_grid(self, grid_thw):
         pos_ids = []
         for t, h, w in grid_thw:
-            hpos_ids = torch.arange(h).unsqueeze(1).expand(-1, w)
-            hpos_ids = hpos_ids.reshape(
-                h // self.spatial_merge_size,
-                self.spatial_merge_size,
-                w // self.spatial_merge_size,
-                self.spatial_merge_size,
-            )
-            hpos_ids = hpos_ids.permute(0, 2, 1, 3)
-            hpos_ids = hpos_ids.flatten()
-
-            wpos_ids = torch.arange(w).unsqueeze(0).expand(h, -1)
-            wpos_ids = wpos_ids.reshape(
-                h // self.spatial_merge_size,
-                self.spatial_merge_size,
-                w // self.spatial_merge_size,
-                self.spatial_merge_size,
-            )
-            wpos_ids = wpos_ids.permute(0, 2, 1, 3)
-            wpos_ids = wpos_ids.flatten()
+            hpos_ids = torch.arange(h).unsqueeze(1).expand(-1, w).flatten()
+            wpos_ids = torch.arange(w).unsqueeze(0).expand(h, -1).flatten()
             pos_ids.append(
                 torch.stack([hpos_ids, wpos_ids], dim=-1).repeat(t, 1)
             )
