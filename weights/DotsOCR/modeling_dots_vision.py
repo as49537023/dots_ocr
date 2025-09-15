@@ -39,7 +39,10 @@ def apply_rotary_pos_emb_vision(tensor: torch.Tensor, freqs: torch.Tensor) -> to
     cos = freqs.cos()
     sin = freqs.sin()
 
-    # For 2D RoPE, freqs is already (seq_len, head_dim), no need to concatenate
+    # For 2D RoPE, negate sin for the second half (w frequencies)
+    half_dim = freqs.shape[-1] // 2
+    sin = torch.cat([sin[:, :half_dim], -sin[:, half_dim:]], dim=-1)
+
     # Expand to match tensor shape for broadcasting
     # cos and sin should be: (1, seq_len, 1, head_dim)
     cos_full = cos.unsqueeze(0).unsqueeze(2).float()
