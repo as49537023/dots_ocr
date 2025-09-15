@@ -34,26 +34,33 @@ def apply_rotary_pos_emb_vision(tensor: torch.Tensor, freqs: torch.Tensor) -> to
     orig_dtype = tensor.dtype
     tensor = tensor.float()
 
+    # tensor shape: (batch_size, seq_len, num_heads, head_dim)
+    # freqs shape: (seq_len, head_dim // 2)
     cos = freqs.cos()
     sin = freqs.sin()
 
-    # Ensure cos and sin have the correct shape to match tensor
-    # tensor shape: (batch_size, seq_len, num_heads, head_dim)
-    # freqs shape: (seq_len, head_dim)
-    # We need cos and sin to be: (1, seq_len, 1, head_dim)
-    cos = cos.unsqueeze(0).unsqueeze(2).float()
-    sin = sin.unsqueeze(0).unsqueeze(2).float()
+    # Concatenate cos and sin to match the full head_dim
+    # cos and sin shape: (seq_len, head_dim // 2)
+    # We need: (seq_len, head_dim)
+    cos_full = torch.cat([cos, cos], dim=-1)
+    sin_full = torch.cat([sin, sin], dim=-1)
 
-    output = (tensor * cos) + (rotate_half(tensor) * sin)
+    # Expand to match tensor shape for broadcasting
+    # cos_full and sin_full should be: (1, seq_len, 1, head_dim)
+    cos_full = cos_full.unsqueeze(0).unsqueeze(2).float()
+    sin_full = sin_full.unsqueeze(0).unsqueeze(2).float()
+
+    # Apply rotary embedding using the standard formula
+    output = (tensor * cos_full) + (rotate_half(tensor) * sin_full)
 
     output = output.to(orig_dtype)
-
     return output
 
 
 class VisionRotaryEmbedding(nn.Module):
     def __init__(self, dim: int, theta: float = 10000.0) -> None:
         super().__init__()
+        # For rotary embeddings, we only need half the dimension since we apply it to pairs
         inv_freq = 1.0 / (theta ** (torch.arange(0, dim, 2, dtype=torch.float) / dim))
         self.register_buffer("inv_freq", inv_freq, persistent=False)
 
@@ -418,7 +425,7 @@ class DotsVisionTransformer(PreTrainedModel):
 
         head_dim = config.embed_dim // config.num_attention_heads
 
-        self.rotary_pos_emb = VisionRotaryEmbedding(head_dim // 2)
+        self.rotary_pos_emb = VisionRotaryEmbedding(head_dim)
 
         _num_hidden_layers = config.num_hidden_layers
         self.blocks = nn.ModuleList(
