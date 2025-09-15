@@ -1,5 +1,9 @@
 # Byte-compiled / optimized / DLL files
-weights/
+# weights/  # Commented out to allow tracking of model code files
+weights/*.safetensors
+weights/*.bin
+weights/*.pth
+weights/*.ckpt
 __pycache__/
 *.py[cod]
 *$py.class
