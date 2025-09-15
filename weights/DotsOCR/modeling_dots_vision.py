@@ -35,20 +35,15 @@ def apply_rotary_pos_emb_vision(tensor: torch.Tensor, freqs: torch.Tensor) -> to
     tensor = tensor.float()
 
     # tensor shape: (batch_size, seq_len, num_heads, head_dim)
-    # freqs shape: (seq_len, head_dim // 2)
+    # freqs shape: (seq_len, head_dim) - for 2D RoPE, freqs contains both h and w frequencies
     cos = freqs.cos()
     sin = freqs.sin()
 
-    # Concatenate cos and sin to match the full head_dim
-    # cos and sin shape: (seq_len, head_dim // 2)
-    # We need: (seq_len, head_dim)
-    cos_full = torch.cat([cos, cos], dim=-1)
-    sin_full = torch.cat([sin, sin], dim=-1)
-
+    # For 2D RoPE, freqs is already (seq_len, head_dim), no need to concatenate
     # Expand to match tensor shape for broadcasting
-    # cos_full and sin_full should be: (1, seq_len, 1, head_dim)
-    cos_full = cos_full.unsqueeze(0).unsqueeze(2).float()
-    sin_full = sin_full.unsqueeze(0).unsqueeze(2).float()
+    # cos and sin should be: (1, seq_len, 1, head_dim)
+    cos_full = cos.unsqueeze(0).unsqueeze(2).float()
+    sin_full = sin.unsqueeze(0).unsqueeze(2).float()
 
     # Apply rotary embedding using the standard formula
     output = (tensor * cos_full) + (rotate_half(tensor) * sin_full)
